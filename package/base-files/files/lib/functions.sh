@@ -32,12 +32,44 @@ xor() {
 	printf "%0${retlen}x" "$ret"
 }
 
+data_2bin() {
+	local data=$1
+	local len=${#1}
+	local bin_data
+
+	for i in $(seq 0 2 $(($len - 1))); do
+		bin_data="${bin_data}\x${data:i:2}"
+	done
+
+	echo -ne $bin_data
+}
+
+data_2xor_val() {
+	local data=$1
+	local len=${#1}
+	local xor_data
+
+	for i in $(seq 0 4 $(($len - 1))); do
+		xor_data="${xor_data}${data:i:4} "
+	done
+
+	echo -n ${xor_data:0:-1}
+}
+
 append() {
 	local var="$1"
 	local value="$2"
 	local sep="${3:- }"
 
 	eval "export ${NO_EXPORT:+-n} -- \"$var=\${$var:+\${$var}\${value:+\$sep}}\$value\""
+}
+
+prepend() {
+	local var="$1"
+	local value="$2"
+	local sep="${3:- }"
+
+	eval "export ${NO_EXPORT:+-n} -- \"$var=\$value\${$var:+\${sep}\${$var}}\""
 }
 
 list_contains() {
@@ -262,11 +294,6 @@ default_postinst() {
 
 	add_group_and_user "${pkgname}"
 
-	if [ -f "$root/usr/lib/opkg/info/${pkgname}.postinst-pkg" ]; then
-		( . "$root/usr/lib/opkg/info/${pkgname}.postinst-pkg" )
-		ret=$?
-	fi
-
 	if [ -d "$root/rootfs-overlay" ]; then
 		cp -R $root/rootfs-overlay/. $root/
 		rm -fR $root/rootfs-overlay/
@@ -290,6 +317,11 @@ default_postinst() {
 		fi
 
 		rm -f /tmp/luci-indexcache
+	fi
+
+	if [ -f "$root/usr/lib/opkg/info/${pkgname}.postinst-pkg" ]; then
+		( . "$root/usr/lib/opkg/info/${pkgname}.postinst-pkg" )
+		ret=$?
 	fi
 
 	local shell="$(command -v bash)"
